@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Golf Accuracy Tracker</title>
+  <!-- Load Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #controls {
+      margin-bottom: 20px;
+    }
+    #shotTable {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 600px;
+      margin-top: 20px;
+    }
+    #shotTable th, #shotTable td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    .inline {
+      display: inline-block;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Golf Accuracy Tracker</h1>
+
+<div id="controls">
+  <div>
+    <label for="fairwayWidth">Fairway Width (yards): </label>
+    <input type="number" id="fairwayWidth" value="60" min="20" max="100" step="1" />
+  </div>
+  <br/>
+
+  <div class="inline">
+    <label for="lateralDispersion">Lateral Dispersion (yards):</label>
+    <input type="range" id="lateralSlider" min="-50" max="50" step="1" value="0" 
+           oninput="document.getElementById('lateralDispersion').value = this.value" />
+  </div>
+
+  <div class="inline">
+    <input type="number" id="lateralDispersion" min="-100" max="100" step="1" value="0"
+           oninput="document.getElementById('lateralSlider').value = this.value" />
+  </div>
+
+  <div class="inline">
+    <button onclick="recordShot()">Record Shot</button>
+  </div>
+</div>
+
+<!-- Table for shot data -->
+<table id="shotTable">
+  <thead>
+    <tr>
+      <th>Shot #</th>
+      <th>Dispersion (yards)</th>
+      <th>Category</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Rows will be added here via JavaScript -->
+  </tbody>
+</table>
+
+<!-- Bar chart -->
+<canvas id="categoryChart" width="400" height="200"></canvas>
+
+<script>
+  // Keep an array of all shots
+  let shots = [];
+
+  // Initialize Chart.js bar chart
+  const ctx = document.getElementById('categoryChart').getContext('2d');
+  const categoryLabels = ['Far Left', 'Near Left', 'Fairway Middle', 'Near Right', 'Far Right'];
+  let categoryCounts = [0, 0, 0, 0, 0];
+
+  const categoryChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: categoryLabels,
+      datasets: [{
+        label: 'Number of Shots',
+        data: categoryCounts,
+        backgroundColor: [
+          '#FF6384', // Far Left
+          '#FF9F40', // Near Left
+          '#4BC0C0', // Fairway
+          '#36A2EB', // Near Right
+          '#9966FF'  // Far Right
+        ]
+      }]
+    },
+    options: {
+      responsive: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          precision: 0
+        }
+      }
+    }
+  });
+
+  function recordShot() {
+    const fairwayWidth = parseFloat(document.getElementById('fairwayWidth').value);
+    const lateralDispersion = parseFloat(document.getElementById('lateralDispersion').value);
+
+    // Determine shot category
+    const category = getShotCategory(lateralDispersion, fairwayWidth);
+
+    // Store shot data
+    shots.push({ 
+      dispersion: lateralDispersion, 
+      category: category 
+    });
+
+    // Update the table
+    updateShotTable();
+
+    // Update the chart
+    updateChart();
+  }
+
+  function getShotCategory(dispersion, fairwayWidth) {
+    const halfWidth = fairwayWidth / 2;
+    const middleLimit = fairwayWidth / 4; // 50% of halfWidth
+    const nearLimit = halfWidth + 5;      // Fairway + 5 yards
+
+    if (dispersion < -nearLimit) {
+      return 'Far Left';
+    } else if (dispersion < -middleLimit) {
+      return 'Near Left';
+    } else if (dispersion <= middleLimit) {
+      return 'Fairway Middle';
+    } else if (dispersion <= nearLimit) {
+      return 'Near Right';
+    } else {
+      return 'Far Right';
+    }
+  }
+
+  function updateShotTable() {
+    const tableBody = document.querySelector('#shotTable tbody');
+    tableBody.innerHTML = ''; // Clear old rows
+
+    shots.forEach((shot, index) => {
+      const row = document.createElement('tr');
+      // Shot number
+      const shotNumCell = document.createElement('td');
+      shotNumCell.textContent = index + 1;
+
+      // Dispersion
+      const dispCell = document.createElement('td');
+      dispCell.textContent = shot.dispersion;
+
+      // Category
+      const catCell = document.createElement('td');
+      catCell.textContent = shot.category;
+
+      row.appendChild(shotNumCell);
+      row.appendChild(dispCell);
+      row.appendChild(catCell);
+      tableBody.appendChild(row);
+    });
+  }
+
+  function updateChart() {
+    // Reset counts
+    categoryCounts = [0, 0, 0, 0, 0];
+
+    // Count the categories
+    shots.forEach(shot => {
+      if (shot.category === 'Far Left') categoryCounts[0]++;
+      else if (shot.category === 'Near Left') categoryCounts[1]++;
+      else if (shot.category === 'Fairway Middle') categoryCounts[2]++;
+      else if (shot.category === 'Near Right') categoryCounts[3]++;
+      else if (shot.category === 'Far Right') categoryCounts[4]++;
+    });
+
+    // Update data in chart
+    categoryChart.data.datasets[0].data = categoryCounts;
+    categoryChart.update();
+  }
+</script>
+
+</body>
+</html>
